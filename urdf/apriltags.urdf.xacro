@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<robot name="apriltags" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="create_apriltag" params="name parent xyz rpy size:=0.2">
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+    </joint>
+  
+    <link name="${name}_link">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${size} ${size} 0.01"/>
+        </geometry>
+      </collision>
+  
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${size} ${size} 0.01"/>
+        </geometry>
+        <material name="Apriltag">
+          <script>
+            <uri>model://materials/scripts</uri>
+            <uri>model://materials/textures</uri>
+            <name>Apriltag</name>
+          </script>
+        </material>
+      </visual>
+  
+      <inertial>
+        <mass value="1e-5" />
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+      </inertial>
+    </link>
+
+    <gazebo reference="${name}_link">
+      <material>Apriltag</material>
+    </gazebo>
+</xacro:macro>
+
+
+  <!-- setup empty world -->
+  <link name="world"/>
+
+  <xacro:create_apriltag name="tag36_11_00000" parent="world" xyz="0 0 1" rpy="0 0 0"/>
+  
+</robot>

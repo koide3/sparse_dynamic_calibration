@@ -1,0 +1,3 @@
+float64 scale
+geometry_msgs/Point position
+geometry_msgs/Quaternion orientation

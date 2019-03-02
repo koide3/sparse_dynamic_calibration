@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="sim" default="false"/>
+
+	<!-- Sensor parameters -->
+	<include file="$(find pointgrey_camera_driver)/launch/camera.launch" if="$(eval not arg('sim'))">
+		<!-- left:15190458, right:15190575 -->
+		<arg name="camera_serial" value="15190575"/>
+		<arg name="calibrated" value="1"/>
+	</include>
+
+	<node pkg="image_transport" type="republish" name="decompress" args="compressed in:=image_raw raw out:=image_raw" if="$(arg sim)"/>
+	<node pkg="topic_tools" type="relay" name="mono_to_raw" args="image_mono/compressed image_raw/compressed" if="$(arg sim)"/>
+
+	<group ns="camera">
+		<node pkg="nodelet" type="nodelet" name="camera_nodelet_manager" args="manager" if="$(arg sim)"/>
+
+		<!--camera_nodelet_manager-->
+		<node pkg="nodelet" type="nodelet" name="pointgrey_rectify" args="load image_proc/rectify camera_nodelet_manager" if="true">
+			<remap from="image_mono" to="/camera/image_raw"/>
+			<remap from="camera_info" to="/camera/camera_info"/>
+			<remap from="image_rect" to="/camera/image_rect"/>
+			<param name="~queue_size" value="30"/>
+		</node>
+		<node pkg="nodelet" type="nodelet" name="pointgrey_resize" args="standalone image_proc/resize camera_nodelet_manager" if="false">
+			<remap from="image" to="/camera/image_mono"/>
+			<remap from="camera_info" to="/camera/camera_info"/>
+			<remap from="~image" to="/camera/qhd/image_mono"/>
+			<remap from="~camera_info" to="/camera/qhd/camera_info"/>
+			<param name="queue_size" value="30"/>
+		</node>
+	</group>
+</launch>

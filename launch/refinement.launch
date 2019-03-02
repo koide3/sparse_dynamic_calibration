@@ -1,0 +1,15 @@
+<launch>
+    <node pkg="sparse_dynamic_calibration" type="sparse_dynamic_refinement_node" name="sparse_dynamic_refinement_node" output="screen">
+        <!-- optimization parameters -->
+        <param name="g2o_optimizer_name" value="lm_var"/>
+        <param name="g2o_max_iterations" value="64"/>
+        <param name="icp_iterations" value="64"/>
+
+        <param name="icp_reciprocal_correspondence" value="true"/>
+        <param name="icp_max_correspondence_distance" value="0.15"/>
+        <param name="icp_point_to_plane" value="true"/>
+        <param name="icp_inf_scale" value="1e-1"/>
+        <param name="icp_robust_kernel" value="NONE"/>
+        <param name="icp_robust_kernel_delta" value="1e-1"/>
+    </node>
+</launch>

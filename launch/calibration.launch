@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="sparse_dynamic_calibration" type="sparse_dynamic_calibration_node" name="sparse_dynamic_calibration_node" output="screen">
+        <remap from="image" to="/camera/image_raw"/>
+        <remap from="camera_info" to="/camera/camera_info"/>
+        <!-- optimization parameters -->
+        <param name="g2o_optimizer_name" value="gn_var_cholmod"/>
+        <param name="g2o_max_iterations" value="32"/>
+        <!-- edge parameters -->
+        <param name="initial_scale" value="6" />
+        <param name="vodom_inf_scale" value="1"/>
+        <param name="vodom2tag_inf_scale" value="1"/>
+        <param name="vodom2tag_robust_kernel" value="Huber"/>
+        <param name="vodom2tag_robust_kernel_delta" value="1e-3"/>
+        <param name="tag_prior_inf_scale" value="1e3"/>
+        <param name="camera2tag_inf_scale" value="1e2"/>
+        <param name="camera2tag_robust_kernel" value="Huber"/>
+        <param name="camera2tag_robust_kernel_delta" value="1e-3"/>
+    </node>
+</launch>

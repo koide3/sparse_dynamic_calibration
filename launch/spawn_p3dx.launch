@@ -1,0 +1,19 @@
+<launch>
+
+	<!-- Load the URDF into the ROS Parameter Server -->
+	<param name="robot_description"
+		command="$(find xacro)/xacro.py '$(find sparse_dynamic_calibration)/urdf/p3dx_with_camera.urdf.xacro'" />
+
+	<!-- Run a python script to the send a service call to gazebo_ros to spawn 
+		a URDF robot -->
+	<node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+		respawn="false" output="screen" args="-urdf -y -4 -model p3dx -param robot_description" />
+
+	<node pkg="robot_state_publisher" type="state_publisher" name="p3dx_st_pub">
+	  <remap from="robot_description" to="robot_description"/>
+	</node>
+
+	<!-- ros_control p3rd launch file -->
+	<!-- <include file="$(find p3dx_control)/launch/control.launch" /> -->
+
+</launch>

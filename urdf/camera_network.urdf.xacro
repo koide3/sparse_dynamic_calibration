@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<robot name="camera_network" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find sparse_dynamic_calibration)/urdf/create_kinect.urdf.xacro" />
+    
+  <!-- setup empty world -->
+  <link name="world"/>
+
+  <xacro:create_kinect name="kinect_01" parent="world" xyz="1.6 0 2" rpy="0 0.45 0" fps="2"/>
+  <xacro:create_kinect name="kinect_02" parent="world" xyz="1 -0.3 2" rpy="0 0.45 -0.6" fps="2"/>
+  <xacro:create_kinect name="kinect_03" parent="world" xyz="1 -7.8 2" rpy="0 0.45 1.5" fps="2"/>
+  <xacro:create_kinect name="kinect_04" parent="world" xyz="9.3 -7.8 2" rpy="0 0.45 2.2" fps="2"/>
+
+  <xacro:create_kinect name="kinect_05" parent="world" xyz="-2 2 2" rpy="0 0.45 2.2" fps="2"/>
+  <xacro:create_kinect name="kinect_06" parent="world" xyz="-2 1 2" rpy="0 0.9 3.14" fps="2"/>
+  <xacro:create_kinect name="kinect_07" parent="world" xyz="-2 0 2" rpy="0 0.45 4.04" fps="2"/>
+
+  <xacro:create_kinect name="kinect_08" parent="world" xyz="1 2.4 2" rpy="0 0.45 0.75" fps="2"/>
+</robot>

@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<root xmlns:sensor="http://playerstage.sourceforge.net/gazebo/xmlschema/#sensor"
+      xmlns:controller="http://playerstage.sourceforge.net/gazebo/xmlschema/#controller"
+      xmlns:interface="http://playerstage.sourceforge.net/gazebo/xmlschema/#interface"
+      xmlns:xacro="http://ros.org/wiki/xacro">
+  
+<xacro:macro name="create_kinect" params="name parent xyz rpy fps:=30 fov:=1.3962634 width:=1920 height:=1080 use_depth:=true distortion:=0.0">
+
+  <joint name="${name}_joint" type="fixed">
+    <origin xyz="${xyz}" rpy="${rpy}"/>
+    <parent link="${parent}"/>
+    <child link="${name}_link"/>
+  </joint>
+
+  <joint name="${name}_optical_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    <parent link="${name}_link"/>
+    <child link="${name}_optical_link"/>
+  </joint>
+
+  <link name="${name}_link">
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+
+    <inertial>
+      <mass value="1e-5" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+    </inertial>
+  </link>
+
+  <link name="${name}_optical_link">
+  </link>
+
+  <!-- camera gazebo plugin -->
+  <gazebo reference="${name}_link">
+    <material>Gazebo/Red</material>
+    <sensor type="depth" name="${name}">
+      <update_rate>${fps}</update_rate>
+      <camera name="head">
+        <horizontal_fov>${fov}</horizontal_fov>
+        <image>
+          <width>${width}</width>
+          <height>${height}</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.02</near>
+          <far>20.0</far>
+        </clip>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.007</stddev>
+        </noise>
+      </camera>
+      <xacro:if value="${use_depth}">
+        <plugin name="${name}_ir_controller" filename="libgazebo_ros_openni_kinect.so">
+        	<baseline>0.2</baseline>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>1.0</updateRate>
+          <cameraName>${name}</cameraName>
+          <imageTopicName>rgb/image</imageTopicName>
+          <depthImageTopicName>depth/image</depthImageTopicName>
+          <pointCloudTopicName>depth/points</pointCloudTopicName>
+          <cameraInfoTopicName>rgb/camera_info</cameraInfoTopicName>
+          <depthImageCameraInfoTopicName>depth/camera_info</depthImageCameraInfoTopicName>
+          <frameName>${name}_optical_link</frameName>
+          <pointCloudCutoff>0.3</pointCloudCutoff>
+          <distortionK1>${distortion}</distortionK1>
+          <distortionK2>${distortion}</distortionK2>
+          <distortionK3>${distortion}</distortionK3>
+          <distortionT1>${distortion}</distortionT1>
+          <distortionT2>${distortion}</distortionT2>
+          <CxPrime>0</CxPrime>
+          <Cx>0</Cx>
+          <Cy>0</Cy>
+          <foculLength>0</foculLength>
+          <hackBaseline>0</hackBaseline>
+        </plugin>
+    </xacro:if>
+    <xacro:unless value="${use_depth}">
+        <plugin name="${name}_ir_controller" filename="libgazebo_ros_camera.so">
+          <alwaysOn>true</alwaysOn>
+          <updateRate>0.0</updateRate>
+          <cameraName>${name}</cameraName>
+          <imageTopicName>rgb/image</imageTopicName>
+          <cameraInfoTopicName>rgb/camera_info</cameraInfoTopicName>
+          <frameName>${name}_optical_link</frameName>
+          <hackBaseline>0.07</hackBaseline>
+          <distortionK1>${distortion}</distortionK1>
+          <distortionK2>${distortion}</distortionK2>
+          <distortionK3>${distortion}</distortionK3>
+          <distortionT1>${distortion}</distortionT1>
+          <distortionT2>${distortion}</distortionT2>
+        </plugin>
+    </xacro:unless>
+    </sensor>
+  </gazebo>
+</xacro:macro>
+
+</root>
