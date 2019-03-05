@@ -146,6 +146,49 @@ roslaunch opt_calibration detection_initializer.launch
 roslaunch opt_calibration listener.launch
 ```
 
+## Example
+
+### Detecting tags
+
+```bash
+tar xzvf sparse_dynamic_example.tar.gz
+roscp sparse_dynamic_example/* catkin_ws/src/sparse_dynamic_calibration/data/
+
+roslaunch sparse_dynamic_calibration generate_tag_camera_network_conf.launch read_from_file:=true
+```
+
+### Running calibration
+
+```bash
+rosparam set use_sim_time true
+rosrun image_transport republish compressed in:=/camera/image_raw raw out:=/camera/image_raw
+```
+
+```bash
+roscd sparse_dynamic_calibration/config
+rviz -d rviz.rviz
+```
+
+```bash
+roslaunch sparse_dynamic_calibration calibrate.launch
+```
+
+```bash
+rosbag play --clock real_30.bag
+```
+
+### Refinement
+
+```bash
+rosparam set use_sim_time false
+roscd sparse_dynamic_calibration/config
+rviz -d rivz.rviz
+```
+
+```bash
+roslaunch sparse_dynamic_calibration refinement.launch
+```
+
 
 ## Related work
 Kenji Koide and Emanuele Menegatti, Sparse and Dynamic RGB-D Camera Network Calibration with Visual Odometry, IROS2019 (under review).
