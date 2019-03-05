@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <boost/format.hpp>
 
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
@@ -27,81 +28,8 @@
 
 #include <sparse_dynamic_calibration/sim3_estimator.hpp>
 #include <sparse_dynamic_calibration/graph_marker_publisher.hpp>
+#include <sparse_dynamic_calibration/transform_publisher.hpp>
 
-
-class TransformPublisher {
-public:
-    TransformPublisher(const std::string& world_frame_id)
-        : world_frame_id(world_frame_id)
-    {
-    }
-
-    void update_pose(const std::string& name, const g2o::Sim3& pose) {
-        Eigen::Isometry3d pose_ = Eigen::Isometry3d::Identity();
-        pose_.translation() = pose.translation() * pose.scale();
-        pose_.linear() = pose.rotation().toRotationMatrix();
-        update_pose(name, pose_);
-    }
-
-    void update_pose(const std::string& name, const Eigen::Isometry3d& pose) {
-        posemap[name] = pose.inverse();
-    }
-
-    void publish() {
-        ros::Time stamp = ros::Time::now();
-        for(const auto& pose : posemap) {
-            geometry_msgs::TransformStamped transform;
-            transform.header.frame_id = "vodom";
-            transform.header.stamp = stamp;
-            transform.child_frame_id = pose.first;
-
-            Eigen::Quaterniond quat(pose.second.linear());
-            transform.transform.translation.x = pose.second.translation().x();
-            transform.transform.translation.y = pose.second.translation().y();
-            transform.transform.translation.z = pose.second.translation().z();
-            transform.transform.rotation.w = quat.w();
-            transform.transform.rotation.x = quat.x();
-            transform.transform.rotation.y = quat.y();
-            transform.transform.rotation.z = quat.z();
-            tf_broadcaster.sendTransform(transform);
-        }
-
-        auto found = posemap.find(world_frame_id);
-        if(found == posemap.end()) {
-            return;
-        }
-
-        geometry_msgs::TransformStamped transform;
-        transform.header.frame_id = "world";
-        transform.header.stamp = stamp;
-        transform.child_frame_id = "vodom";
-
-        Eigen::Isometry3d world_pose = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()) * found->second.inverse();
-
-        Eigen::Quaterniond quat(world_pose.linear());
-        transform.transform.translation.x = world_pose.translation().x();
-        transform.transform.translation.y = world_pose.translation().y();
-        transform.transform.translation.z = world_pose.translation().z();
-        transform.transform.rotation.w = quat.w();
-        transform.transform.rotation.x = quat.x();
-        transform.transform.rotation.y = quat.y();
-        transform.transform.rotation.z = quat.z();
-        tf_broadcaster.sendTransform(transform);
-    }
-
-    void spin() {
-        ros::Rate rate(10);
-        while(ros::ok()) {
-            publish();
-            rate.sleep();
-        }
-    }
-
-private:
-    std::string world_frame_id;
-    tf::TransformBroadcaster tf_broadcaster;
-    std::unordered_map<std::string, Eigen::Isometry3d> posemap;
-};
 
 
 class SparseDynamicCalibrationNode {
@@ -119,14 +47,19 @@ public:
           vodom_points_pub(private_nh.advertise<sensor_msgs::PointCloud2>("points", 5)),
         marker_pub(new sparse_dynamic_calibration::GraphMarkerPublisher(private_nh))
     {
-        transform_publisher.reset(new TransformPublisher("tag_0"));
+        int world_frame_tag_id = private_nh.param<int>("world_frame_tag_id", 0);
+        transform_publisher.reset(new sparse_dynamic_calibration::TransformPublisher((boost::format("tag_%d") % world_frame_tag_id).str()));
 
         std::string data_dir = ros::package::getPath("sparse_dynamic_calibration") + "/data";
-        estimator.reset(new sparse_dynamic_calibration::Sim3Estimator());
+        estimator.reset(new sparse_dynamic_calibration::Sim3Estimator(world_frame_tag_id));
         estimator->initialize_graph(private_nh.param<std::string>("g2o_optimizer_name", "lm_var_cholmod"), private_nh.param<int>("g2o_max_iterations", 32));
         estimator->initialize_tag_camera_network(data_dir, data_dir + "/tags.yaml", data_dir + "/cameras.yaml");
-        if(estimator->tag_camera_network->read_poses(nh, estimator->graph.get(), data_dir + "/tag_camera_poses_refined.yaml")) {
-            ROS_WARN_STREAM("calibrated poses loaded!!");
+
+        std::string calibrated_poses_file = private_nh.param<std::string>("calibrated_poses_file", "");
+        if(!calibrated_poses_file.empty()) {
+            if(estimator->tag_camera_network->read_poses(nh, estimator->graph.get(), calibrated_poses_file)) {
+                ROS_WARN_STREAM("calibrated poses loaded!!");
+            }
         }
 
         points_pubs.resize(estimator->tag_camera_network->cameras.size());
@@ -155,7 +88,8 @@ public:
         vodom = vodom.inverse();
 
         std::lock_guard<std::mutex> lock(estimator_mutex);
-        if(image_msg->header.stamp - last_update_time > ros::Duration(0.5)) {
+        double keyframe_interval = private_nh.param<double>("keyframe_interval", 0.5);
+        if(image_msg->header.stamp - last_update_time > ros::Duration(keyframe_interval)) {
             last_update_time = image_msg->header.stamp;
             estimator->update(private_nh, image_msg->header.stamp, camera_matrix, undistorted, vodom);
         } else {
@@ -169,14 +103,12 @@ public:
             }
             std::stringstream tag_name;
             tag_name << "tag_" << tag.second->id;
-            // std::cout << tag_name.str() << std::endl;
             transform_publisher->update_pose(tag_name.str(), tag.second->vertex->estimate());
         }
         for(const auto& camera: estimator->tag_camera_network->cameras) {
             if(!camera->vertex) {
                 continue;
             }
-            // std::cout << camera->camera_name << std::endl;
             transform_publisher->update_pose(camera->camera_name, camera->vertex->estimate());
         }
         for(size_t i=0; i<estimator->keyframes.size(); i++) {
@@ -186,8 +118,6 @@ public:
 
             g2o::Sim3 sim3 = estimator->keyframes[i]->vertex->estimate();
             transform_publisher->update_pose(sst.str(), sim3);
-            // std::cout << "keyframe[" << i << "]:" << sim3.scale() << std::endl;
-            // std::cout << "keyframe[" << i << "]:" << sim3.translation().transpose() << std::endl;
         }
 
         if(camera_pose_pub.getNumSubscribers()) {
@@ -256,10 +186,6 @@ public:
 
         ros::serialization::OStream stream(buffer.get(), serial_size);
         ros::serialization::serialize(stream, *markers_msg);
-
-        std::ofstream ofs(package_path + "/data/markers.msg", std::ios::binary);
-        ofs.write(reinterpret_cast<char*>(buffer.get()), serial_size);
-        ofs.close();
     }
 
     void publish_camera_pose(const Eigen::Isometry3d& vodom) {
@@ -292,7 +218,7 @@ private:
     std::unique_ptr<sparse_dynamic_calibration::GraphMarkerPublisher> marker_pub;
 
     ros::Time last_update_time;
-    std::unique_ptr<TransformPublisher> transform_publisher;
+    std::unique_ptr<sparse_dynamic_calibration::TransformPublisher> transform_publisher;
 
     ros::Timer points_pub_timer;
 

@@ -3,6 +3,14 @@
     <node pkg="sparse_dynamic_calibration" type="sparse_dynamic_calibration_node" name="sparse_dynamic_calibration_node" output="screen">
         <remap from="image" to="/camera/image_raw"/>
         <remap from="camera_info" to="/camera/camera_info"/>
+
+        <!-- general -->
+        <param name="world_frame_tag_id" value="0"/>
+        <param name="calibrated_poses_file" value=""/>
+        <!-- <param name="calibrated_poses_file" value="$(find sparse_dynamic_calibration)/data/tag_camera_poses_refined.yaml"/> -->
+
+        <param name="keyframe_interval" value="0.5"/>
+
         <!-- optimization parameters -->
         <param name="g2o_optimizer_name" value="gn_var_cholmod"/>
         <param name="g2o_max_iterations" value="32"/>

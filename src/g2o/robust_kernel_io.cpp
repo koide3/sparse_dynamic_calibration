@@ -39,7 +39,7 @@ bool save_robust_kernels(const std::string& filename, g2o::SparseOptimizer* grap
         }
 
         ofs << edge->vertices().size() << " ";
-        for(int i=0; i<edge->vertices().size(); i++) {
+        for(size_t i=0; i<edge->vertices().size(); i++) {
             ofs << edge->vertices()[i]->id() << " ";
         }
         ofs << type << " " << kernel->delta() << std::endl;

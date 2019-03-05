@@ -70,6 +70,8 @@ void StaticCamera::read_cloud(const std::string& data_dir, const std::string& ca
     cloud->header.frame_id = camera_name;
 }
 
+// TODO: initial guess estimation is necessary.
+//     : currently, without the robust kernel, optimization gets corrupted
 void StaticCamera::add_to_graph(ros::NodeHandle& nh, g2o::SparseOptimizer* graph, std::unordered_map<long, std::shared_ptr<StaticTag>>& tagmap) {
     if(vertex != nullptr) {
         return;

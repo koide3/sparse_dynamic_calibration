@@ -5,6 +5,7 @@
         <param name="g2o_max_iterations" value="64"/>
         <param name="icp_iterations" value="64"/>
 
+        <param name="icp_min_correspondences" value="1500"/>
         <param name="icp_reciprocal_correspondence" value="true"/>
         <param name="icp_max_correspondence_distance" value="0.15"/>
         <param name="icp_point_to_plane" value="true"/>

@@ -83,8 +83,9 @@ void ICPConstraints::add_to_graph(ros::NodeHandle& nh, g2o::SparseOptimizer* gra
     double inf_scale = nh.param<double>("icp_inf_scale", 1e2);
     std::string kernel_type = nh.param<std::string>("icp_robust_kernel", "NONE");
     double kernel_delta = nh.param<double>("icp_robust_kernel_delta", 1e-2);
+    size_t min_correspondences = nh.param<int>("icp_min_correspondences", 1500);
 
-    if(correspondences.size() < 1500) {
+    if(correspondences.size() < min_correspondences) {
         return;
     }
 

@@ -21,7 +21,7 @@ namespace sparse_dynamic_calibration {
 
 class Sim3Estimator {
 public:
-    Sim3Estimator();
+    Sim3Estimator(long world_frame_tag_id);
     ~Sim3Estimator();
 
     void update(ros::NodeHandle& nh, const ros::Time& stamp, const cv::Mat& camera_matrix, const cv::Mat& rect_image, const Eigen::Isometry3d& vodom);
@@ -37,9 +37,12 @@ public:
     bool initialize_tag_camera_network(const std::string& data_dir, const std::string& tag_setting, const std::string& camera_setting);
 
 public:
+    long world_frame_tag_id;
+
     int max_iterations;
     std::unique_ptr<g2o::SparseOptimizer> graph;
 
+    std::unordered_map<long, long> tag_detections_count;
     std::unique_ptr<TagDetector> tag_detector;
     std::unique_ptr<TagCameraNetwork> tag_camera_network;
 

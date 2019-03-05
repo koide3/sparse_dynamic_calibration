@@ -17,7 +17,7 @@ void Keyframe::add_to_graph(ros::NodeHandle& nh, g2o::SparseOptimizer* graph, st
 
     vertex = new g2o::VertexSim3Expmap();
     vertex->setId(graph->vertices().size());
-    vertex->setEstimate(g2o::Sim3(vodom.linear(), vodom.translation(), 1.0));
+    vertex->setEstimate(g2o::Sim3(vodom.linear(), vodom.translation(), nh.param<double>("initial_scale", 6)));
     graph->addVertex(vertex);
 
     vodom_edge = nullptr;
@@ -40,20 +40,13 @@ void Keyframe::add_to_graph(ros::NodeHandle& nh, g2o::SparseOptimizer* graph, st
         vodom_edge->computeError();
     }
     else {
-        vertex->setEstimate(g2o::Sim3(vodom.linear(), vodom.translation(), nh.param<double>("initial_scale", 6)));
         vertex->setFixed(true);
     }
 
-    std::cout << "tags:" << detected_tag_ids.size() << std::endl;
-    for(int i=0; i<detected_tag_ids.size(); i++) {
+    for(size_t i=0; i<detected_tag_ids.size(); i++) {
         long tag_id = detected_tag_ids[i];
 
-        if(tag_id == 12) {
-            continue;
-        }
-
         const auto& tag_pose = detected_tag_poses[i];
-        std::cout << "--- tag[" << tag_id << "] ---\n" << tag_pose.matrix() << std::endl;
 
         auto found = tagmap.find(tag_id);
         if(found == tagmap.end()) {
@@ -73,12 +66,7 @@ void Keyframe::add_to_graph(ros::NodeHandle& nh, g2o::SparseOptimizer* graph, st
         tag_edge->setInformation(inf * nh.param<double>("vodom2tag_inf_scale", 1e1));
 
         if(found == tagmap.end()) {
-            g2o::Sim3 vodom_sim3 = vertex->estimate();
-            g2o::SE3Quat vodom_se3(vodom_sim3.rotation(), vodom_sim3.translation());
-            g2o::SE3Quat tag_se3(tag_pose.linear(), tag_pose.translation());
-
             tag_edge->init_v2();
-            tag_edge->computeError();
         }
 
         std::string kernel_type = nh.param<std::string>("vodom2tag_robust_kernel", "Huber");
@@ -93,7 +81,7 @@ void Keyframe::add_to_graph(ros::NodeHandle& nh, g2o::SparseOptimizer* graph, st
         }
 
         graph->addEdge(tag_edge);
-        tag_edges.push_back(tag_edge);
+        // tag_edges.push_back(tag_edge);
     }
 }
 

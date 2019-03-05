@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="read_from_file" default="false"/>
+
+    <node pkg="sparse_dynamic_calibration" type="generate_tag_camera_network_conf" name="generate_tag_camera_network_conf" output="screen">
+        <param name="read_from_file" value="$(arg read_from_file)"/>
+
+        <!-- patten to detect camera_name -->
+        <param name="camera_name_pattern" value="(/kinect.*)/rgb/image"/>
+        <param name="camera_info_topic_suffix" value="/rgb/camera_info"/>
+        <param name="image_topic_suffix" value="/rgb/image"/>
+        <param name="points_suffix" value="/depth_ir/points"/>
+    </node>
+</launch>

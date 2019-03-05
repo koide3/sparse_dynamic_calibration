@@ -51,10 +51,11 @@ link_directories(
     )
 
 add_library(sparse_dynamic_calibration_lib SHARED
+    src/g2o/g2o_optimizers.cpp
     src/g2o/robust_kernel_io.cpp
+    src/g2o/edge_icp.cpp
     src/g2o/edge_se3_plane.cpp
     src/g2o/edge_sim3_se3_expmap.cpp
-    src/sparse_dynamic_calibration/g2o_optimizers.cpp
     src/sparse_dynamic_calibration/keyframe.cpp
     src/sparse_dynamic_calibration/tag_detector.cpp
     src/sparse_dynamic_calibration/sim3_estimator.cpp

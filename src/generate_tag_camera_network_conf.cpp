@@ -36,11 +36,13 @@ public:
         tag_detector.reset(new TagDetector(tag_settings));
     }
 
-    bool detect() {
+    bool detect(ros::NodeHandle& nh) {
         std::vector<std::string> topics = get_topics();
 
+        std::string camera_name_pattern = nh.param<std::string>("camera_name_pattern", "(/kinect.*)/rgb/image");
+        ROS_INFO_STREAM("camera_name_pattern:" << camera_name_pattern);
         for(const auto& topic : topics) {
-            std::regex pattern("(/kinect.*)/rgb/image");
+            std::regex pattern(camera_name_pattern);
             std::smatch matched;
             std::regex_match(topic, matched, pattern);
 
@@ -48,13 +50,14 @@ public:
                 continue;
             };
 
-            retrieve(matched[1]);
+            retrieve(nh, matched[1]);
         }
 
         return true;
     }
 
     bool read_from_file() {
+        // TODO: this is a very adhoc implementation. need to be modified
         for(int i=1; ; i++) {
             std::string camera_name = (boost::format("kinect_%02d") % i).str();
             ROS_INFO_STREAM("read:" << camera_name);
@@ -80,45 +83,49 @@ public:
         return topics;
     }
 
-    void retrieve(const std::string& camera_name) {
+    void retrieve(ros::NodeHandle& nh, const std::string& camera_name) {
         ROS_INFO_STREAM("camera_name: " << camera_name);
+
+        std::string camera_info_topic_suffix = nh.param<std::string>("camera_info_topic_suffix", "/rgb/camera_info");
         ROS_INFO_STREAM("waiting for camera_info...");
-        ROS_INFO_STREAM("topic: " << camera_name + "/rgb/camera_info");
+        ROS_INFO_STREAM("topic: " << camera_name + camera_info_topic_suffix);
         sensor_msgs::CameraInfoConstPtr camera_info_msg;
         for(int i=0; i<5; i++) {
-           camera_info_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_name + "/rgb/camera_info", ros::Duration(1.0));
-           if(camera_info_msg) {
-               break;
-           } else {
-               ROS_INFO_STREAM("retry...");
-           }
+            camera_info_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_name + camera_info_topic_suffix, ros::Duration(1.0));
+            if(camera_info_msg) {
+                break;
+            } else {
+                ROS_INFO_STREAM("retry...");
+            }
         }
         if(!camera_info_msg) {
             ROS_WARN_STREAM("failed to retrieve camera_info!!");
             return;
         }
 
+        std::string image_topic_suffix = nh.param<std::string>("image_topic_suffix", "/rgb/image");
         ROS_INFO_STREAM("waiting for image...");
-        ROS_INFO_STREAM("topic: " << camera_name + "/rgb/image");
+        ROS_INFO_STREAM("topic: " << camera_name << image_topic_suffix);
         sensor_msgs::ImageConstPtr image_msg;
         for(int i=0; i<5; i++) {
-           image_msg = ros::topic::waitForMessage<sensor_msgs::Image>(camera_name + "/rgb/image", ros::Duration(2.5));
-           if(image_msg) {
-               break;
-           } else {
-               ROS_INFO_STREAM("retry...");
-           }
+            image_msg = ros::topic::waitForMessage<sensor_msgs::Image>(camera_name + image_topic_suffix, ros::Duration(2.5));
+            if(image_msg) {
+                break;
+            } else {
+                ROS_INFO_STREAM("retry...");
+            }
         }
         if(!image_msg) {
             ROS_WARN_STREAM("failed to retrieve image!!");
             return;
         }
 
+        std::string points_topic_suffix = nh.param<std::string>("points_topic_suffix", "/depth_ir/points");
         ROS_INFO_STREAM("waiting for point cloud...");
-        ROS_INFO_STREAM("topic: " << camera_name + "/depth_ir/points");
+        ROS_INFO_STREAM("topic: " << camera_name + points_topic_suffix);
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
         for(int i=0; i<5; i++) {
-            sensor_msgs::PointCloud2ConstPtr points_msg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(camera_name + "/depth_ir/points", ros::Duration(2.5));
+            sensor_msgs::PointCloud2ConstPtr points_msg = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(camera_name + points_topic_suffix, ros::Duration(2.5));
             if(points_msg) {
                 cloud.reset(new pcl::PointCloud<pcl::PointXYZ>());
                 pcl::fromROSMsg(*points_msg, *cloud);
@@ -278,8 +285,8 @@ public:
 
         cv::Mat undistorted = cv::imread(data_dir + "/" + camera_name + "_image.jpg");
         if(!undistorted.data) {
-           ROS_INFO_STREAM("failed to open the image file!!");
-           return false;
+            ROS_INFO_STREAM("failed to open the image file!!");
+            return false;
         }
 
         cv::Mat grayscale;
@@ -390,14 +397,21 @@ public:
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "generate_tag_camera_network_conf");
+    ros::NodeHandle nh;
+    ros::NodeHandle private_nh("~");
+
     std::string data_dir = ros::package::getPath("sparse_dynamic_calibration") + "/data";
 
     sparse_dynamic_calibration::CameraNeworkTagDetection tag_detection(data_dir + "/tags.yaml");
-    tag_detection.detect();
-    // tag_detection.read_from_file();
+    if(!private_nh.param<bool>("read_from_file", false)) {
+        tag_detection.detect(private_nh);
+    } else {
+        ROS_INFO_STREAM("read from file...");
+        tag_detection.read_from_file();
+    }
 
     if(tag_detection.cameras.empty()) {
-        ROS_WARN_STREAM("no cameras!!");
+        ROS_WARN_STREAM("no cameras detected!!");
         return 1;
     }
 
