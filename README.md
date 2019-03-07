@@ -4,7 +4,7 @@ This is a ROS package to calibrate a camera network consisting of not only stati
 
 The calibration method itself is designed for general camera networks. But, it also provides some scripts to incorporate with [OpenPTrack](https://github.com/OpenPTrack/open_ptrack_v2), an RGB-D camera network-based human-machine interaction framework.
 
-This package has been testes on ROS melodic on Ubuntu 18.04
+This package has been tested on ROS melodic on Ubuntu 18.04
 
 ![](figs/system.jpg)
 
