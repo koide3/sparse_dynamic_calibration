@@ -30,7 +30,7 @@ bool GraphRefinement::refine(ros::NodeHandle& nh, const std::string &data_dir) {
         return false;
     }
 
-    ros::Publisher points_pub = nh.advertise<sensor_msgs::PointCloud2>("/points", 1);
+    ros::Publisher points_pub = nh.advertise<sensor_msgs::PointCloud2>("/refined_points", 1);
 
     auto original_clouds = accumulate_clouds();
     pcl::io::savePCDFileBinary("/tmp/original.pcd", *original_clouds);

@@ -93,7 +93,7 @@ rosbag record -O test.bag -e "/camera/(camera_info|image_raw/compressed)" /vodom
 
 ```bash
 rosparam set use_sim_time true
-roslaunch sparse_dynamic_calibration calibrate.launch
+roslaunch sparse_dynamic_calibration calibration.launch
 ```
 
 ```bash
@@ -125,9 +125,9 @@ rosparam set use_sim_time false
 roslaunch sparse_dynamic_calibration refinement.launch
 ```
 
-Refined camera poses will be saved to "*data/tag\_camera\_poses\_refined.yaml*".
+Refined camera poses will be saved to "*data/tag\_camera\_poses\_refined.yaml*". The accumulated point clouds before/after the refinement will be saved to /tmp/(original|refined).pcd
 
-### Copying estimated posed to OpenPTrack
+### Copying estimated posed to OpenPTrack (optional)
 
 After calibrating the camera network, copy the estimated camera poses with:
 ```bash
@@ -148,11 +148,15 @@ roslaunch opt_calibration listener.launch
 
 ## Example
 
+~~[Static camera imageset](https://github.com)~~  
+~~[Dynamic camera rosbag](https://github.com)~~  
+(will be available soon)
+
 ### Detecting tags
 
 ```bash
 tar xzvf sparse_dynamic_example.tar.gz
-roscp sparse_dynamic_example/* catkin_ws/src/sparse_dynamic_calibration/data/
+cp -R sparse_dynamic_example/data catkin_ws/src/sparse_dynamic_calibration/
 
 roslaunch sparse_dynamic_calibration generate_tag_camera_network_conf.launch read_from_file:=true
 ```
@@ -170,11 +174,15 @@ rviz -d rviz.rviz
 ```
 
 ```bash
-roslaunch sparse_dynamic_calibration calibrate.launch
+roslaunch sparse_dynamic_calibration calibration.launch
 ```
 
 ```bash
 rosbag play --clock real_30.bag
+```
+
+```bash
+rostopic pub /sparse_dynamic_calibration_node/save std_msgs/Empty
 ```
 
 ### Refinement
@@ -182,7 +190,7 @@ rosbag play --clock real_30.bag
 ```bash
 rosparam set use_sim_time false
 roscd sparse_dynamic_calibration/config
-rviz -d rivz.rviz
+rviz -d rviz.rviz
 ```
 
 ```bash
