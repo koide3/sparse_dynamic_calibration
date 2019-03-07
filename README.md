@@ -53,6 +53,10 @@ cd .. && catkin_make
 
 ## Usage
 
+### Tag placement
+
+Print out [apriltag 36h11 family](https://robot2016.mit.edu/sites/default/files/documents/project_apriltag36h11.pdf), and place the in the environment so that each camera can see at least one tag.
+
 ### Detecting tags from static cameras
 
 Edit "*data/tags.yaml*" to specify the tag size.
