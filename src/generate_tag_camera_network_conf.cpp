@@ -56,12 +56,12 @@ public:
         return true;
     }
 
-    bool read_from_file() {
+    bool read_from_file(ros::NodeHandle& nh) {
         // TODO: this is a very adhoc implementation. need to be modified
         for(int i=1; ; i++) {
             std::string camera_name = (boost::format("kinect_%02d") % i).str();
             ROS_INFO_STREAM("read:" << camera_name);
-            if(!read_from_file(camera_name)) {
+            if(!read_from_file(nh, camera_name)) {
                 break;
             }
         }
@@ -202,7 +202,25 @@ public:
             apriltag_detection* det;
             zarray_get(detected_tags.get(), i, &det);
 
+            ROS_INFO_STREAM("--- tag[" << det->id << "] ---");
+            ROS_INFO_STREAM("hamming: " << det->hamming);
+            ROS_INFO_STREAM("margin : " << det->decision_margin);
+
+            if(det->decision_margin < nh.param<double>("min_decision_margin", 100.0)) {
+                ROS_INFO_STREAM("ignore tag[" << det->id << "] with too small decision_margin : " << det->decision_margin);
+                det->id = -1;
+                continue;
+            }
+
             Eigen::Isometry3d pose = tag_detector->estimate_pose(camera_matrix, det);
+            ROS_INFO_STREAM("distance: " << pose.translation().norm());
+
+            double max_distance = nh.param<double>("max_distance", 5.0);
+            if(pose.translation().norm() > max_distance) {
+                ROS_INFO_STREAM("ignore too far tag[" << det->id << "] : " << pose.translation().norm());
+                det->id = -1;
+                continue;
+            }
 
             camera->detected_tag_ids.push_back(det->id);
             camera->detected_tag_poses.push_back(pose);
@@ -214,59 +232,16 @@ public:
                 tags.push_back(tag);
                 tagmap[det->id] = tag;
             }
-
-            cv::Mat obj_points(4, 1, CV_64FC3, cv::Scalar::all(0));
-            obj_points.at<cv::Vec3d>(1)[0] = 1;
-            obj_points.at<cv::Vec3d>(2)[1] = 1;
-            obj_points.at<cv::Vec3d>(3)[2] = 1;
-
-            cv::Mat r(3, 3, CV_64FC1);
-            for(int i=0; i<3; i++) {
-                for(int j=0; j<3; j++) {
-                    r.at<double>(i, j) = pose.linear()(i, j);
-                }
-            }
-            cv::Rodrigues(r, r);
-
-            cv::Mat t(3, 1, CV_64FC1);
-            for(int i=0; i<3; i++) {
-                t.at<double>(i) = pose.translation()(i);
-            }
-
-            cv::Mat image_points;
-            cv::projectPoints(obj_points, r, t, camera_matrix, cv::Mat(), image_points);
-
-            cv::Vec2d org = image_points.at<cv::Vec2d>(0);
-            cv::Vec2d x_axis = image_points.at<cv::Vec2d>(1);
-            cv::Vec2d y_axis = image_points.at<cv::Vec2d>(2);
-            cv::Vec2d z_axis = image_points.at<cv::Vec2d>(3);
-            cv::line(undistorted, cv::Point(org[0], org[1]), cv::Point(x_axis[0], x_axis[1]), cv::Scalar(0, 0, 255), 2);
-            cv::line(undistorted, cv::Point(org[0], org[1]), cv::Point(y_axis[0], y_axis[1]), cv::Scalar(0, 255, 0), 2);
-            cv::line(undistorted, cv::Point(org[0], org[1]), cv::Point(z_axis[0], z_axis[1]), cv::Scalar(255, 0, 0), 2);
         }
 
-        for(int i=0; i<zarray_size(detected_tags.get()); i++) {
-            apriltag_detection* det;
-            zarray_get(detected_tags.get(), i, &det);
-            cv::line(undistorted, cv::Point(det->p[0][0], det->p[0][1]), cv::Point(det->p[1][0], det->p[1][1]), cv::Scalar(255, 0, 0), 2);
-            cv::line(undistorted, cv::Point(det->p[1][0], det->p[1][1]), cv::Point(det->p[2][0], det->p[2][1]), cv::Scalar(255, 0, 0), 2);
-            cv::line(undistorted, cv::Point(det->p[2][0], det->p[2][1]), cv::Point(det->p[3][0], det->p[3][1]), cv::Scalar(255, 0, 0), 2);
-            cv::line(undistorted, cv::Point(det->p[3][0], det->p[3][1]), cv::Point(det->p[0][0], det->p[0][1]), cv::Scalar(255, 0, 0), 2);
-
-            std::stringstream sst;
-            sst << det->id;
-
-            int baseline = 0;
-            cv::Size textsize = cv::getTextSize(sst.str(), CV_FONT_HERSHEY_SCRIPT_SIMPLEX, 2.0,  2, &baseline);
-            cv::putText(undistorted, sst.str(), cv::Point(det->c[0] - textsize.width/2, det->c[1] + textsize.height/2), CV_FONT_HERSHEY_SCRIPT_SIMPLEX, 2.0, cv::Scalar(255, 64, 64), 2);
-        }
+        tag_detector->draw(undistorted, camera_matrix, detected_tags);
 
         cv::imwrite((boost::format("/tmp/%s.jpg") % camera->camera_name).str(), undistorted);
         cv::imshow("image", undistorted);
         cv::waitKey(1000);
     }
 
-    bool read_from_file(const std::string& camera_name) {
+    bool read_from_file(ros::NodeHandle& nh, const std::string& camera_name) {
         std::string data_dir = ros::package::getPath("sparse_dynamic_calibration") + "/data";
         ROS_INFO_STREAM("camera_name: " << camera_name);
 
@@ -317,7 +292,25 @@ public:
             apriltag_detection* det;
             zarray_get(detected_tags.get(), i, &det);
 
+            ROS_INFO_STREAM("--- tag[" << det->id << "] ---");
+            ROS_INFO_STREAM("hamming: " << det->hamming);
+            ROS_INFO_STREAM("margin : " << det->decision_margin);
+
+            if(det->decision_margin < nh.param<double>("min_decision_margin", 100.0)) {
+                ROS_INFO_STREAM("ignore tag[" << det->id << "] with too small decision_margin : " << det->decision_margin);
+                det->id = -1;
+                continue;
+            }
+
             Eigen::Isometry3d pose = tag_detector->estimate_pose(camera_matrix, det);
+            ROS_INFO_STREAM("distance: " << pose.translation().norm());
+
+            double max_distance = nh.param<double>("max_distance", 5.0);
+            if(pose.translation().norm() > max_distance) {
+                ROS_INFO_STREAM("ignore too far tag[" << det->id << "] : " << pose.translation().norm());
+                det->id = -1;
+                continue;
+            }
 
             camera->detected_tag_ids.push_back(det->id);
             camera->detected_tag_poses.push_back(pose);
@@ -329,52 +322,9 @@ public:
                 tags.push_back(tag);
                 tagmap[det->id] = tag;
             }
-
-            cv::Mat obj_points(4, 1, CV_64FC3, cv::Scalar::all(0));
-            obj_points.at<cv::Vec3d>(1)[0] = 1;
-            obj_points.at<cv::Vec3d>(2)[1] = 1;
-            obj_points.at<cv::Vec3d>(3)[2] = 1;
-
-            cv::Mat r(3, 3, CV_64FC1);
-            for(int i=0; i<3; i++) {
-                for(int j=0; j<3; j++) {
-                    r.at<double>(i, j) = pose.linear()(i, j);
-                }
-            }
-            cv::Rodrigues(r, r);
-
-            cv::Mat t(3, 1, CV_64FC1);
-            for(int i=0; i<3; i++) {
-                t.at<double>(i) = pose.translation()(i);
-            }
-
-            cv::Mat image_points;
-            cv::projectPoints(obj_points, r, t, camera_matrix, cv::Mat(), image_points);
-
-            cv::Vec2d org = image_points.at<cv::Vec2d>(0);
-            cv::Vec2d x_axis = image_points.at<cv::Vec2d>(1);
-            cv::Vec2d y_axis = image_points.at<cv::Vec2d>(2);
-            cv::Vec2d z_axis = image_points.at<cv::Vec2d>(3);
-            cv::line(undistorted, cv::Point(org[0], org[1]), cv::Point(x_axis[0], x_axis[1]), cv::Scalar(0, 0, 255), 2);
-            cv::line(undistorted, cv::Point(org[0], org[1]), cv::Point(y_axis[0], y_axis[1]), cv::Scalar(0, 255, 0), 2);
-            cv::line(undistorted, cv::Point(org[0], org[1]), cv::Point(z_axis[0], z_axis[1]), cv::Scalar(255, 0, 0), 2);
         }
 
-        for(int i=0; i<zarray_size(detected_tags.get()); i++) {
-            apriltag_detection* det;
-            zarray_get(detected_tags.get(), i, &det);
-            cv::line(undistorted, cv::Point(det->p[0][0], det->p[0][1]), cv::Point(det->p[1][0], det->p[1][1]), cv::Scalar(255, 0, 0), 2);
-            cv::line(undistorted, cv::Point(det->p[1][0], det->p[1][1]), cv::Point(det->p[2][0], det->p[2][1]), cv::Scalar(255, 0, 0), 2);
-            cv::line(undistorted, cv::Point(det->p[2][0], det->p[2][1]), cv::Point(det->p[3][0], det->p[3][1]), cv::Scalar(255, 0, 0), 2);
-            cv::line(undistorted, cv::Point(det->p[3][0], det->p[3][1]), cv::Point(det->p[0][0], det->p[0][1]), cv::Scalar(255, 0, 0), 2);
-
-            std::stringstream sst;
-            sst << det->id;
-
-            int baseline = 0;
-            cv::Size textsize = cv::getTextSize(sst.str(), CV_FONT_HERSHEY_SCRIPT_SIMPLEX, 2.0,  2, &baseline);
-            cv::putText(undistorted, sst.str(), cv::Point(det->c[0] - textsize.width/2, det->c[1] + textsize.height/2), CV_FONT_HERSHEY_SCRIPT_SIMPLEX, 2.0, cv::Scalar(255, 64, 64), 2);
-        }
+        tag_detector->draw(undistorted, camera_matrix, detected_tags);
 
         cv::imwrite((boost::format("/tmp/%s.jpg") % camera->camera_name).str(), undistorted);
         cv::imshow("image", undistorted);
@@ -407,7 +357,7 @@ int main(int argc, char** argv) {
         tag_detection.detect(private_nh);
     } else {
         ROS_INFO_STREAM("read from file...");
-        tag_detection.read_from_file();
+        tag_detection.read_from_file(private_nh);
     }
 
     if(tag_detection.cameras.empty()) {

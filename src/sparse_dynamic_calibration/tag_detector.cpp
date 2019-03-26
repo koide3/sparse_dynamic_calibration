@@ -6,6 +6,8 @@ extern "C" {
 #include <apriltag/apriltag_pose.h>
 }
 
+#include <boost/format.hpp>
+
 namespace sparse_dynamic_calibration {
 
 TagDetector::TagDetector(const std::string& tag_settings)
@@ -80,24 +82,26 @@ void TagDetector::draw(cv::Mat& canvas, const cv::Mat& camera_matrix, const std:
         zarray_get(dets.get(), i, &det);
 
         Eigen::Isometry3d pose = estimate_pose(camera_matrix, det);
-        Eigen::Vector3d center = pose.translation();
-        Eigen::Vector3d x_axis = center + pose.linear().col(0);
-        Eigen::Vector3d y_axis = center + pose.linear().col(1);
-        Eigen::Vector3d z_axis = center + pose.linear().col(2);
+        if(det->id != -1) {
+            Eigen::Vector3d center = pose.translation();
+            Eigen::Vector3d x_axis = center + pose.linear().col(0);
+            Eigen::Vector3d y_axis = center + pose.linear().col(1);
+            Eigen::Vector3d z_axis = center + pose.linear().col(2);
 
-        std::vector<cv::Point3f> axes_3d = {
-            cv::Point3f(center[0], center[1], center[2]),
-            cv::Point3f(x_axis[0], x_axis[1], x_axis[2]),
-            cv::Point3f(y_axis[0], y_axis[1], y_axis[2]),
-            cv::Point3f(z_axis[0], z_axis[1], z_axis[2])
-        };
-        std::vector<cv::Point2f> axes_2d;
-        cv::Mat ivec(3, 1, CV_32FC1, cv::Scalar::all(0));
-        cv::projectPoints(axes_3d, ivec, ivec, camera_matrix, cv::Mat(), axes_2d);
+            std::vector<cv::Point3f> axes_3d = {
+                cv::Point3f(center[0], center[1], center[2]),
+                cv::Point3f(x_axis[0], x_axis[1], x_axis[2]),
+                cv::Point3f(y_axis[0], y_axis[1], y_axis[2]),
+                cv::Point3f(z_axis[0], z_axis[1], z_axis[2])
+            };
+            std::vector<cv::Point2f> axes_2d;
+            cv::Mat ivec(3, 1, CV_32FC1, cv::Scalar::all(0));
+            cv::projectPoints(axes_3d, ivec, ivec, camera_matrix, cv::Mat(), axes_2d);
 
-        cv::line(canvas, cv::Point(axes_2d[0].x, axes_2d[0].y), cv::Point(axes_2d[1].x, axes_2d[1].y), cv::Scalar(0, 0, 255), 2);
-        cv::line(canvas, cv::Point(axes_2d[0].x, axes_2d[0].y), cv::Point(axes_2d[2].x, axes_2d[2].y), cv::Scalar(0, 255, 0), 2);
-        cv::line(canvas, cv::Point(axes_2d[0].x, axes_2d[0].y), cv::Point(axes_2d[3].x, axes_2d[3].y), cv::Scalar(255, 0, 0), 2);
+            cv::line(canvas, cv::Point(axes_2d[0].x, axes_2d[0].y), cv::Point(axes_2d[1].x, axes_2d[1].y), cv::Scalar(0, 0, 255), 2);
+            cv::line(canvas, cv::Point(axes_2d[0].x, axes_2d[0].y), cv::Point(axes_2d[2].x, axes_2d[2].y), cv::Scalar(0, 255, 0), 2);
+            cv::line(canvas, cv::Point(axes_2d[0].x, axes_2d[0].y), cv::Point(axes_2d[3].x, axes_2d[3].y), cv::Scalar(255, 0, 0), 2);
+        }
 
         std::vector<cv::Point> points = {
             cv::Point(det->p[0][0], det->p[0][1]),
@@ -106,7 +110,8 @@ void TagDetector::draw(cv::Mat& canvas, const cv::Mat& camera_matrix, const std:
             cv::Point(det->p[3][0], det->p[3][1])
         };
 
-        cv::polylines(canvas, points, true, cv::Scalar(255, 0, 0), 2);
+        cv::Scalar color = det->id == -1 ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0);
+        cv::polylines(canvas, points, true, color, 2);
 
         std::stringstream sst;
         sst << det->id;
@@ -114,6 +119,12 @@ void TagDetector::draw(cv::Mat& canvas, const cv::Mat& camera_matrix, const std:
         int baseline = 0;
         cv::Size textsize = cv::getTextSize(sst.str(), CV_FONT_HERSHEY_SCRIPT_SIMPLEX, 2.0, 2, &baseline);
         cv::putText(canvas, sst.str(), cv::Point(det->c[0] - textsize.width/2, det->c[1] + textsize.height/2), CV_FONT_HERSHEY_SCRIPT_SIMPLEX, 2.0, cv::Scalar(0xff, 0x99, 0), 2);
+
+        sst.str("");
+        sst.clear();
+        sst << "margin:" << boost::format("%.1f") % det->decision_margin << " dist:" << boost::format("%.1f") % pose.translation().norm();
+        cv::Size textsize2 = cv::getTextSize(sst.str(), CV_FONT_HERSHEY_PLAIN, 1.0, 2, &baseline);
+        cv::putText(canvas, sst.str(), cv::Point(det->c[0] - textsize.width/2, det->c[1] + textsize.height/2 + textsize2.height + 5), CV_FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0xff, 0x99, 0), 2);
     }
 }
 

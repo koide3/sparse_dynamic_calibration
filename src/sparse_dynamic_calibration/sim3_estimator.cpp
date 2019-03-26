@@ -66,7 +66,20 @@ void Sim3Estimator::update(ros::NodeHandle& nh, const ros::Time& stamp, const cv
         apriltag_detection* det;
         zarray_get(detected_tags.get(), i, &det);
 
+
+        if(det->decision_margin < nh.param<double>("min_decision_margin", 100.0)) {
+            det->id = -1;
+            continue;
+        }
+
         Eigen::Isometry3d pose = tag_detector->estimate_pose(camera_matrix, det);
+
+        double max_distance = nh.param<double>("max_distance", 5.0);
+        if(pose.translation().norm() > max_distance) {
+            det->id = -1;
+            continue;
+        }
+
         tag_ids.push_back(det->id);
         tag_poses.push_back(pose);
 

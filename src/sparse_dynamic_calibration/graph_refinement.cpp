@@ -34,6 +34,9 @@ bool GraphRefinement::refine(ros::NodeHandle& nh, const std::string &data_dir) {
 
     auto original_clouds = accumulate_clouds();
     pcl::io::savePCDFileBinary("/tmp/original.pcd", *original_clouds);
+    if(points_pub.getNumSubscribers()) {
+        points_pub.publish(original_clouds);
+    }
 
     int icp_iterations = nh.param<int>("icp_iterations", 32);
     for(int i=0; i<icp_iterations && ros::ok(); i++) {

@@ -23,7 +23,7 @@ StaticCameraRefinement::StaticCameraRefinement(const std::string& data_dir, cons
         pcl::PointCloud<pcl::PointXYZ>::Ptr downsampled(new pcl::PointCloud<pcl::PointXYZ>());
 
         pcl::VoxelGrid<pcl::PointXYZ> voxelgrid;
-        voxelgrid.setLeafSize(0.05f, 0.05f, 0.05f);
+        voxelgrid.setLeafSize(0.1f, 0.1f, 0.1f);
         voxelgrid.setInputCloud(cloud);
         voxelgrid.filter(*downsampled);
 

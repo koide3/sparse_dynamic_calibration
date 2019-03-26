@@ -11,6 +11,9 @@
 
         <param name="keyframe_interval" value="0.5"/>
 
+        <!-- tag detection params -->
+        <param name="max_distance" value="5.0"/>
+        <param name="min_decision_margin" value="100.0"/>
         <!-- optimization parameters -->
         <param name="g2o_optimizer_name" value="gn_var_cholmod"/>
         <param name="g2o_max_iterations" value="32"/>
