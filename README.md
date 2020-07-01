@@ -203,4 +203,4 @@ roslaunch sparse_dynamic_calibration refinement.launch
 
 
 ## Related work
-Kenji Koide and Emanuele Menegatti, Sparse and Dynamic RGB-D Camera Network Calibration with Visual Odometry, IROS2019 (under review).
+Kenji Koide and Emanuele Menegatti, Non-overlapping RGB-D Camera Network Calibration with Monocular Visual Odometry, IROS2020.
